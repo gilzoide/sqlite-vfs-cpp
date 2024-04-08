@@ -8,11 +8,7 @@
  *
  * @see https://sqlite.org/c3ref/file.html
  */
-class SQLiteFileShim {
-	/// SQLite File base data.
-	/// @warning: this MUST be the first field in the class, don't move it!
-	sqlite3_file base;
-
+class SQLiteFileShim : sqlite3_file {
 public:
 	SQLiteFileShim();
 	SQLiteFileShim(sqlite3_file *original_file);
@@ -49,11 +45,7 @@ protected:
  *
  * @see https://sqlite.org/c3ref/vfs.html
  */
-class SQLiteVfsShim {
-	/// SQLite VFS base data.
-	/// @warning: this MUST be the first field in the class, don't move it!
-	sqlite3_vfs base;
-
+class SQLiteVfsShim : sqlite3_vfs {
 public:
 	SQLiteVfsShim(const char *name, const char *base_vfs_name = nullptr);
 	SQLiteVfsShim(const char *name, int file_shim_size, const char *base_vfs_name = nullptr);
@@ -147,11 +139,11 @@ static sqlite3_io_methods SQLiteFileShimMethods = {
 
 // File
 SQLiteFileShim::SQLiteFileShim()
-	: base(sqlite3_file())
+	: sqlite3_file()
 {
 }
 SQLiteFileShim::SQLiteFileShim(sqlite3_file *original_file)
-	: base(sqlite3_file { &SQLiteFileShimMethods }), original_file(original_file)
+	: sqlite3_file({ &SQLiteFileShimMethods }), original_file(original_file)
 {
 }
 
@@ -222,38 +214,36 @@ SQLiteVfsShim::SQLiteVfsShim(const char *name, const char *base_vfs_name)
 }
 SQLiteVfsShim::SQLiteVfsShim(const char *name, int file_shim_size, const char *base_vfs_name) {
 	original_vfs = sqlite3_vfs_find(base_vfs_name) ?: sqlite3_vfs_find(nullptr);
-	base = {
-		original_vfs->iVersion,
-		(int) file_shim_size + original_vfs->szOsFile,
-		original_vfs->mxPathname,
-		nullptr,
-		name,
-		nullptr,
-		wrap_vfs_method<&SQLiteVfsShim::xOpen>,
-		wrap_vfs_method<&SQLiteVfsShim::xDelete>,
-		wrap_vfs_method<&SQLiteVfsShim::xAccess>,
-		wrap_vfs_method<&SQLiteVfsShim::xFullPathname>,
-		wrap_vfs_method<&SQLiteVfsShim::xDlOpen>,
-		wrap_vfs_method<&SQLiteVfsShim::xDlError>,
-		wrap_vfs_method<&SQLiteVfsShim::xDlSym>,
-		wrap_vfs_method<&SQLiteVfsShim::xDlClose>,
-		wrap_vfs_method<&SQLiteVfsShim::xRandomness>,
-		wrap_vfs_method<&SQLiteVfsShim::xSleep>,
-		wrap_vfs_method<&SQLiteVfsShim::xCurrentTime>,
-		wrap_vfs_method<&SQLiteVfsShim::xGetLastError>,
-		wrap_vfs_method<&SQLiteVfsShim::xCurrentTimeInt64>,
-		wrap_vfs_method<&SQLiteVfsShim::xSetSystemCall>,
-		wrap_vfs_method<&SQLiteVfsShim::xGetSystemCall>,
-		wrap_vfs_method<&SQLiteVfsShim::xNextSystemCall>,
-	};
+	iVersion = original_vfs->iVersion;
+	szOsFile = (int) file_shim_size + original_vfs->szOsFile;
+	mxPathname = original_vfs->mxPathname;
+	pNext = nullptr;
+	zName = name;
+	pAppData = nullptr;
+	sqlite3_vfs::xOpen = wrap_vfs_method<&SQLiteVfsShim::xOpen>;
+	sqlite3_vfs::xDelete = wrap_vfs_method<&SQLiteVfsShim::xDelete>;
+	sqlite3_vfs::xAccess = wrap_vfs_method<&SQLiteVfsShim::xAccess>;
+	sqlite3_vfs::xFullPathname = wrap_vfs_method<&SQLiteVfsShim::xFullPathname>;
+	sqlite3_vfs::xDlOpen = wrap_vfs_method<&SQLiteVfsShim::xDlOpen>;
+	sqlite3_vfs::xDlError = wrap_vfs_method<&SQLiteVfsShim::xDlError>;
+	sqlite3_vfs::xDlSym = wrap_vfs_method<&SQLiteVfsShim::xDlSym>;
+	sqlite3_vfs::xDlClose = wrap_vfs_method<&SQLiteVfsShim::xDlClose>;
+	sqlite3_vfs::xRandomness = wrap_vfs_method<&SQLiteVfsShim::xRandomness>;
+	sqlite3_vfs::xSleep = wrap_vfs_method<&SQLiteVfsShim::xSleep>;
+	sqlite3_vfs::xCurrentTime = wrap_vfs_method<&SQLiteVfsShim::xCurrentTime>;
+	sqlite3_vfs::xGetLastError = wrap_vfs_method<&SQLiteVfsShim::xGetLastError>;
+	sqlite3_vfs::xCurrentTimeInt64 = wrap_vfs_method<&SQLiteVfsShim::xCurrentTimeInt64>;
+	sqlite3_vfs::xSetSystemCall = wrap_vfs_method<&SQLiteVfsShim::xSetSystemCall>;
+	sqlite3_vfs::xGetSystemCall = wrap_vfs_method<&SQLiteVfsShim::xGetSystemCall>;
+	sqlite3_vfs::xNextSystemCall = wrap_vfs_method<&SQLiteVfsShim::xNextSystemCall>;
 }
 
 int SQLiteVfsShim::register_vfs(bool makeDefault) {
-	return sqlite3_vfs_register(&base, makeDefault);
+	return sqlite3_vfs_register(this, makeDefault);
 }
 
 int SQLiteVfsShim::unregister_vfs() {
-	return sqlite3_vfs_unregister(&base);
+	return sqlite3_vfs_unregister(this);
 }
 
 int SQLiteVfsShim::xOpen(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
