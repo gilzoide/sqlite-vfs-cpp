@@ -1,4 +1,4 @@
 CompileFlags:
   Add:
     - -std=c++17
-    - -DSQLITE_VFS_SHIM_IMPLEMENTATION
+    - -DSQLITE_VFS_IMPLEMENTATION

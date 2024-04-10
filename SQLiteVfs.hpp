@@ -10,7 +10,7 @@
  *
  * @see https://sqlite.org/c3ref/file.html
  */
-class SQLiteFile : sqlite3_file {
+class SQLiteFile : public sqlite3_file {
 public:
 	SQLiteFile();
 	SQLiteFile(sqlite3_file *original_file);
@@ -49,7 +49,7 @@ protected:
  *
  * @see https://sqlite.org/c3ref/vfs.html
  */
-class SQLiteVfs : sqlite3_vfs {
+class SQLiteVfs : public sqlite3_vfs {
 public:
 	SQLiteVfs(const char *name, const char *base_vfs_name = nullptr);
 	SQLiteVfs(const char *name, int file_shim_size, const char *base_vfs_name = nullptr);
@@ -113,7 +113,7 @@ protected:
 ///////////////////////////////////////////////////////////
 // Implementation
 ///////////////////////////////////////////////////////////
-#ifdef SQLITE_VFS_SHIM_IMPLEMENTATION
+#ifdef SQLITE_VFS_IMPLEMENTATION
 
 template<auto SQLiteFile::*fptr, typename... Args>
 static auto wrap_file_method(sqlite3_file *file, Args... args) {
@@ -305,4 +305,4 @@ const char *SQLiteVfs::xNextSystemCall(const char *zName) {
 	return original_vfs->xNextSystemCall(original_vfs, zName);
 }
 
-#endif
+#endif  // SQLITE_VFS_IMPLEMENTATION
