@@ -28,7 +28,7 @@ public:
 	virtual int xSectorSize();
 	virtual int xDeviceCharacteristics();
 	/* Methods above are valid for version 1 */
-	virtual int xShmMap(int iPg, int pgsz, int, void volatile**pp);
+	virtual int xShmMap(int iPg, int pgsz, int flags, void volatile**pp);
 	virtual int xShmLock(int offset, int n, int flags);
 	virtual void xShmBarrier();
 	virtual int xShmUnmap(int deleteFlag);
@@ -49,16 +49,53 @@ protected:
  *
  * @see https://sqlite.org/c3ref/vfs.html
  */
+template<typename TFileShim>
 class SQLiteVfs : public sqlite3_vfs {
-public:
-	SQLiteVfs(const char *name, const char *base_vfs_name = nullptr);
-	SQLiteVfs(const char *name, int file_shim_size, const char *base_vfs_name = nullptr);
-	SQLiteVfs(const char *name, int file_shim_size, sqlite3_vfs *original_vfs);
-	
-	int register_vfs(bool makeDefault);
-	int unregister_vfs();
+	template<auto SQLiteVfs::*fptr, typename... Args>
+	static auto wrap_vfs_method(sqlite3_vfs *vfs, Args... args) {
+		return (static_cast<SQLiteVfs *>(vfs)->*fptr)(args...);
+	}
 
-	template<class TFileShim>
+public:
+	SQLiteVfs(const char *name, const char *base_vfs_name = nullptr)
+		: SQLiteVfs(name, sqlite3_vfs_find(base_vfs_name) ?: sqlite3_vfs_find(nullptr))
+	{
+	}
+	SQLiteVfs(const char *name, sqlite3_vfs *original_vfs)
+		: original_vfs(original_vfs)
+	{
+		iVersion = original_vfs->iVersion;
+		szOsFile = (int) sizeof(TFileShim) + original_vfs->szOsFile;
+		mxPathname = original_vfs->mxPathname;
+		pNext = nullptr;
+		zName = name;
+		pAppData = nullptr;
+		sqlite3_vfs::xOpen = wrap_vfs_method<&SQLiteVfs::xOpen>;
+		sqlite3_vfs::xDelete = wrap_vfs_method<&SQLiteVfs::xDelete>;
+		sqlite3_vfs::xAccess = wrap_vfs_method<&SQLiteVfs::xAccess>;
+		sqlite3_vfs::xFullPathname = wrap_vfs_method<&SQLiteVfs::xFullPathname>;
+		sqlite3_vfs::xDlOpen = wrap_vfs_method<&SQLiteVfs::xDlOpen>;
+		sqlite3_vfs::xDlError = wrap_vfs_method<&SQLiteVfs::xDlError>;
+		sqlite3_vfs::xDlSym = wrap_vfs_method<&SQLiteVfs::xDlSym>;
+		sqlite3_vfs::xDlClose = wrap_vfs_method<&SQLiteVfs::xDlClose>;
+		sqlite3_vfs::xRandomness = wrap_vfs_method<&SQLiteVfs::xRandomness>;
+		sqlite3_vfs::xSleep = wrap_vfs_method<&SQLiteVfs::xSleep>;
+		sqlite3_vfs::xCurrentTime = wrap_vfs_method<&SQLiteVfs::xCurrentTime>;
+		sqlite3_vfs::xGetLastError = wrap_vfs_method<&SQLiteVfs::xGetLastError>;
+		sqlite3_vfs::xCurrentTimeInt64 = wrap_vfs_method<&SQLiteVfs::xCurrentTimeInt64>;
+		sqlite3_vfs::xSetSystemCall = wrap_vfs_method<&SQLiteVfs::xSetSystemCall>;
+		sqlite3_vfs::xGetSystemCall = wrap_vfs_method<&SQLiteVfs::xGetSystemCall>;
+		sqlite3_vfs::xNextSystemCall = wrap_vfs_method<&SQLiteVfs::xNextSystemCall>;
+	}
+	
+	int register_vfs(bool makeDefault) {
+		return sqlite3_vfs_register(this, makeDefault);
+	}
+	
+	int unregister_vfs() {
+		return sqlite3_vfs_unregister(this);
+	}
+
 	int open(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
 		TFileShim *file_shim = (TFileShim *) file;
 		sqlite3_file *original_file = (sqlite3_file *) (file_shim + 1);
@@ -72,30 +109,62 @@ public:
 		return result;
 	}
 
-	virtual int xOpen(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags);
-	virtual int xDelete(const char *zName, int syncDir);
-	virtual int xAccess(const char *zName, int flags, int *pResOut);
-	virtual int xFullPathname(const char *zName, int nOut, char *zOut);
-	virtual void *xDlOpen(const char *zFilename);
-	virtual void xDlError(int nByte, char *zErrMsg);
-	virtual void (*xDlSym(void *library, const char *zSymbol))(void);
-	virtual void xDlClose(void *library);
-	virtual int xRandomness(int nByte, char *zOut);
-	virtual int xSleep(int microseconds);
-	virtual int xCurrentTime(double *pResOut);
-	virtual int xGetLastError(int nByte, char *zOut);
+	virtual int xOpen(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
+		return open(zName, file, flags, pOutFlags);
+	}
+	virtual int xDelete(const char *zName, int syncDir) {
+		return original_vfs->xDelete(original_vfs, zName, syncDir);
+	}
+	virtual int xAccess(const char *zName, int flags, int *pResOut) {
+		return original_vfs->xAccess(original_vfs, zName, flags, pResOut);
+	}
+	virtual int xFullPathname(const char *zName, int nOut, char *zOut) {
+		return original_vfs->xFullPathname(original_vfs, zName, nOut, zOut);
+	}
+	virtual void *xDlOpen(const char *zFilename) {
+		return original_vfs->xDlOpen(original_vfs, zFilename);
+	}
+	virtual void xDlError(int nByte, char *zErrMsg) {
+		original_vfs->xDlError(original_vfs, nByte, zErrMsg);
+	}
+	virtual void (*xDlSym(void *library, const char *zSymbol))(void) {
+		return original_vfs->xDlSym(original_vfs, library, zSymbol);
+	}
+	virtual void xDlClose(void *library) {
+		return original_vfs->xDlClose(original_vfs, library);
+	}
+	virtual int xRandomness(int nByte, char *zOut) {
+		return original_vfs->xRandomness(original_vfs, nByte, zOut);
+	}
+	virtual int xSleep(int microseconds) {
+		return original_vfs->xSleep(original_vfs, microseconds);
+	}
+	virtual int xCurrentTime(double *pResOut) {
+		return original_vfs->xCurrentTime(original_vfs, pResOut);
+	}
+	virtual int xGetLastError(int nByte, char *zOut) {
+		return original_vfs->xGetLastError(original_vfs, nByte, zOut);
+	}
 	/*
 	** The methods above are in version 1 of the sqlite_vfs object
 	** definition.  Those that follow are added in version 2 or later
 	*/
-	virtual int xCurrentTimeInt64(sqlite3_int64 *pResOut);
+	virtual int xCurrentTimeInt64(sqlite3_int64 *pResOut) {
+		return original_vfs->xCurrentTimeInt64(original_vfs, pResOut);
+	}
 	/*
 	** The methods above are in versions 1 and 2 of the sqlite_vfs object.
 	** Those below are for version 3 and greater.
 	*/
-	virtual int xSetSystemCall(const char *zName, sqlite3_syscall_ptr ptr);
-	virtual sqlite3_syscall_ptr xGetSystemCall(const char *zName);
-	virtual const char *xNextSystemCall(const char *zName);
+	virtual int xSetSystemCall(const char *zName, sqlite3_syscall_ptr ptr) {
+		return original_vfs->xSetSystemCall(original_vfs, zName, ptr);
+	}
+	virtual sqlite3_syscall_ptr xGetSystemCall(const char *zName) {
+		return original_vfs->xGetSystemCall(original_vfs, zName);
+	}
+	virtual const char *xNextSystemCall(const char *zName) {
+		return original_vfs->xNextSystemCall(original_vfs, zName);
+	}
 	/*
 	** The methods above are in versions 1 through 3 of the sqlite_vfs object.
 	** New fields may be appended in future versions.  The iVersion
@@ -205,104 +274,6 @@ int SQLiteFile::xFetch(sqlite3_int64 iOfst, int iAmt, void **pp) {
 }
 int SQLiteFile::xUnfetch(sqlite3_int64 iOfst, void *p) {
 	return original_file->pMethods->xUnfetch(original_file, iOfst, p);
-}
-
-// VFS
-template<auto SQLiteVfs::*fptr, typename... Args>
-static auto wrap_vfs_method(sqlite3_vfs *vfs, Args... args) {
-	return (((SQLiteVfs *) vfs)->*fptr)(args...);
-}
-
-SQLiteVfs::SQLiteVfs(const char *name, const char *base_vfs_name)
-	: SQLiteVfs(name, sizeof(SQLiteFile), base_vfs_name)
-{
-}
-SQLiteVfs::SQLiteVfs(const char *name, int file_shim_size, const char *base_vfs_name)
-	: SQLiteVfs(name, file_shim_size, sqlite3_vfs_find(base_vfs_name) ?: sqlite3_vfs_find(nullptr))
-{
-}
-SQLiteVfs::SQLiteVfs(const char *name, int file_shim_size, sqlite3_vfs *original_vfs)
-	: original_vfs(original_vfs)
-{
-	iVersion = original_vfs->iVersion;
-	szOsFile = (int) file_shim_size + original_vfs->szOsFile;
-	mxPathname = original_vfs->mxPathname;
-	pNext = nullptr;
-	zName = name;
-	pAppData = nullptr;
-	sqlite3_vfs::xOpen = wrap_vfs_method<&SQLiteVfs::xOpen>;
-	sqlite3_vfs::xDelete = wrap_vfs_method<&SQLiteVfs::xDelete>;
-	sqlite3_vfs::xAccess = wrap_vfs_method<&SQLiteVfs::xAccess>;
-	sqlite3_vfs::xFullPathname = wrap_vfs_method<&SQLiteVfs::xFullPathname>;
-	sqlite3_vfs::xDlOpen = wrap_vfs_method<&SQLiteVfs::xDlOpen>;
-	sqlite3_vfs::xDlError = wrap_vfs_method<&SQLiteVfs::xDlError>;
-	sqlite3_vfs::xDlSym = wrap_vfs_method<&SQLiteVfs::xDlSym>;
-	sqlite3_vfs::xDlClose = wrap_vfs_method<&SQLiteVfs::xDlClose>;
-	sqlite3_vfs::xRandomness = wrap_vfs_method<&SQLiteVfs::xRandomness>;
-	sqlite3_vfs::xSleep = wrap_vfs_method<&SQLiteVfs::xSleep>;
-	sqlite3_vfs::xCurrentTime = wrap_vfs_method<&SQLiteVfs::xCurrentTime>;
-	sqlite3_vfs::xGetLastError = wrap_vfs_method<&SQLiteVfs::xGetLastError>;
-	sqlite3_vfs::xCurrentTimeInt64 = wrap_vfs_method<&SQLiteVfs::xCurrentTimeInt64>;
-	sqlite3_vfs::xSetSystemCall = wrap_vfs_method<&SQLiteVfs::xSetSystemCall>;
-	sqlite3_vfs::xGetSystemCall = wrap_vfs_method<&SQLiteVfs::xGetSystemCall>;
-	sqlite3_vfs::xNextSystemCall = wrap_vfs_method<&SQLiteVfs::xNextSystemCall>;
-}
-
-int SQLiteVfs::register_vfs(bool makeDefault) {
-	return sqlite3_vfs_register(this, makeDefault);
-}
-
-int SQLiteVfs::unregister_vfs() {
-	return sqlite3_vfs_unregister(this);
-}
-
-int SQLiteVfs::xOpen(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-	return open<SQLiteFile>(zName, file, flags, pOutFlags);
-}
-int SQLiteVfs::xDelete(const char *zName, int syncDir) {
-	return original_vfs->xDelete(original_vfs, zName, syncDir);
-}
-int SQLiteVfs::xAccess(const char *zName, int flags, int *pResOut) {
-	return original_vfs->xAccess(original_vfs, zName, flags, pResOut);
-}
-int SQLiteVfs::xFullPathname(const char *zName, int nOut, char *zOut) {
-	return original_vfs->xFullPathname(original_vfs, zName, nOut, zOut);
-}
-void *SQLiteVfs::xDlOpen(const char *zFilename) {
-	return original_vfs->xDlOpen(original_vfs, zFilename);
-}
-void SQLiteVfs::xDlError(int nByte, char *zErrMsg) {
-	original_vfs->xDlError(original_vfs, nByte, zErrMsg);
-}
-void (*SQLiteVfs::xDlSym(void *library, const char *zSymbol))(void) {
-	return original_vfs->xDlSym(original_vfs, library, zSymbol);
-}
-void SQLiteVfs::xDlClose(void *library) {
-	return original_vfs->xDlClose(original_vfs, library);
-}
-int SQLiteVfs::xRandomness(int nByte, char *zOut) {
-	return original_vfs->xRandomness(original_vfs, nByte, zOut);
-}
-int SQLiteVfs::xSleep(int microseconds) {
-	return original_vfs->xSleep(original_vfs, microseconds);
-}
-int SQLiteVfs::xCurrentTime(double *pResOut) {
-	return original_vfs->xCurrentTime(original_vfs, pResOut);
-}
-int SQLiteVfs::xGetLastError(int nByte, char *zOut) {
-	return original_vfs->xGetLastError(original_vfs, nByte, zOut);
-}
-int SQLiteVfs::xCurrentTimeInt64(sqlite3_int64 *pResOut) {
-	return original_vfs->xCurrentTimeInt64(original_vfs, pResOut);
-}
-int SQLiteVfs::xSetSystemCall(const char *zName, sqlite3_syscall_ptr ptr) {
-	return original_vfs->xSetSystemCall(original_vfs, zName, ptr);
-}
-sqlite3_syscall_ptr SQLiteVfs::xGetSystemCall(const char *zName) {
-	return original_vfs->xGetSystemCall(original_vfs, zName);
-}
-const char *SQLiteVfs::xNextSystemCall(const char *zName) {
-	return original_vfs->xNextSystemCall(original_vfs, zName);
 }
 
 #endif  // SQLITE_VFS_IMPLEMENTATION
