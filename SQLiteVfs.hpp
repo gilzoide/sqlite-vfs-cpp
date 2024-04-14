@@ -5,12 +5,14 @@
 
 namespace sqlite3vfs {
 	/**
-	* SQLite File shim with virtual methods for C++.
-	*
-	* By default, it forwards every call to the `original_file` passed to it in its constructor.
-	*
-	* @see https://sqlite.org/c3ref/file.html
-	*/
+	 * SQLite File implementation with virtual methods for C++.
+	 *
+	 * By default, it forwards every call to the `original_file` passed to it by `SQLiteFile`.
+	 * 
+	 * @note Destructors will be called automatically by `SQLiteFile` right after `xClose` is called.
+	 *
+	 * @see https://sqlite.org/c3ref/file.html
+	 */
 	struct SQLiteFileImpl {
 		sqlite3_file *original_file;
 
@@ -75,7 +77,10 @@ namespace sqlite3vfs {
 	};
 
 	/**
-	 * SQLite File 
+	 * POD `sqlite3_file` subclass that forwards all invocations to an embedded object that inherits `SQLiteFileImpl`.
+	 *
+	 * You should not create objects of this type manually nor subclass it.
+	 * Pass your `SQLiteFileImpl` subclass as template argument instead.
 	 */
 	template<class TFileImpl>
 	struct SQLiteFile : public sqlite3_file {
@@ -175,27 +180,22 @@ namespace sqlite3vfs {
 	};
 
 	/**
-	* SQLite VFS shim class with virtual methods for C++.
-	*
-	* By default, it forwards every call to the `original_vfs` passed to it in its constructor.
-	*
-	* @see https://sqlite.org/c3ref/vfs.html
-	*/
+	 * SQLite VFS implementation with virtual methods for C++.
+	 *
+	 * By default, it forwards every call to the `original_vfs` passed to it.
+	 *
+	 * @see https://sqlite.org/c3ref/vfs.html
+	 */
 	template<typename TFileImpl>
 	struct SQLiteVfsImpl {
 		using FileImpl = TFileImpl;
 		
 		sqlite3_vfs *original_vfs;
 		
-		int open(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-			SQLiteFile<TFileImpl> *file_shim = (SQLiteFile<TFileImpl> *) file;
-			int result = original_vfs->xOpen(original_vfs, zName, file_shim->original_file, flags, pOutFlags);
-			file_shim->setup(result);
+		virtual int xOpen(sqlite3_filename zName, SQLiteFile<TFileImpl> *file, int flags, int *pOutFlags) {
+			int result = original_vfs->xOpen(original_vfs, zName, file->original_file, flags, pOutFlags);
+			file->setup(result);
 			return result;
-		}
-
-		virtual int xOpen(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-			return open(zName, file, flags, pOutFlags);
 		}
 		virtual int xDelete(const char *zName, int syncDir) {
 			return original_vfs->xDelete(original_vfs, zName, syncDir);
@@ -257,6 +257,12 @@ namespace sqlite3vfs {
 		*/
 	};
 
+	/**
+	 * POD `sqlite3_vfs` subclass that forwards all invocations to an embedded object that inherits `SQLiteVfsImpl`.
+	 *
+	 * You should not subclass this type.
+	 * Pass your `SQLiteVfsImpl` subclass as template argument instead.
+	 */
 	template<typename TVfsImpl>
 	struct SQLiteVfs : public sqlite3_vfs {
 		TVfsImpl implementation;
@@ -318,7 +324,7 @@ namespace sqlite3vfs {
 		}
 		
 		static int wrap_xOpen(sqlite3_vfs *vfs, sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-			return static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, file, flags, pOutFlags);
+			return static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, (SQLiteFile<typename TVfsImpl::FileImpl> *) file, flags, pOutFlags);
 		}
 		static int wrap_xDelete(sqlite3_vfs *vfs, const char *zName, int syncDir) {
 			return static_cast<SQLiteVfs *>(vfs)->implementation.xDelete(zName, syncDir);
