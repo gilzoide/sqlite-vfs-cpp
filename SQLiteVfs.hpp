@@ -261,6 +261,39 @@ namespace sqlite3vfs {
 	struct SQLiteVfs : public sqlite3_vfs {
 		TVfsImpl implementation;
 
+		SQLiteVfs(const char *name)
+			: SQLiteVfs(name, (sqlite3_vfs *) nullptr)
+		{	
+		}
+
+		SQLiteVfs(const char *name, const char *base_vfs_name)
+			: SQLiteVfs(name, sqlite3_vfs_find(base_vfs_name))
+		{
+		}
+
+		SQLiteVfs(const char *name, sqlite3_vfs *original_vfs)
+			: SQLiteVfs()
+		{
+			if (original_vfs == nullptr) {
+				original_vfs = sqlite3_vfs_find(nullptr);
+			}
+			implementation.original_vfs = original_vfs;
+
+			iVersion = original_vfs->iVersion;
+			szOsFile = (int) sizeof(SQLiteFile<typename TVfsImpl::FileImpl>) + original_vfs->szOsFile;
+			mxPathname = original_vfs->mxPathname;
+			zName = name;
+		}
+
+		int register_vfs(bool makeDefault) {
+			return sqlite3_vfs_register(this, makeDefault);
+		}
+		
+		int unregister_vfs() {
+			return sqlite3_vfs_unregister(this);
+		}
+
+	private:
 		SQLiteVfs()
 			: implementation()
 		{
@@ -284,31 +317,6 @@ namespace sqlite3vfs {
 			xNextSystemCall = &wrap_xNextSystemCall;
 		}
 		
-		SQLiteVfs(const char *name, const char *base_vfs_name = nullptr)
-			: SQLiteVfs(name, sqlite3_vfs_find(base_vfs_name) ?: sqlite3_vfs_find(nullptr))
-		{
-		}
-
-		SQLiteVfs(const char *name, sqlite3_vfs *original_vfs)
-			: SQLiteVfs()
-		{
-			implementation.original_vfs = original_vfs;
-
-			iVersion = original_vfs->iVersion;
-			szOsFile = (int) sizeof(SQLiteFile<typename TVfsImpl::FileImpl>) + original_vfs->szOsFile;
-			mxPathname = original_vfs->mxPathname;
-			zName = name;
-		}
-
-		int register_vfs(bool makeDefault) {
-			return sqlite3_vfs_register(this, makeDefault);
-		}
-		
-		int unregister_vfs() {
-			return sqlite3_vfs_unregister(this);
-		}
-
-	private:
 		static int wrap_xOpen(sqlite3_vfs *vfs, sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
 			return static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, file, flags, pOutFlags);
 		}
