@@ -82,10 +82,12 @@ namespace sqlite3vfs {
 	 * You should not create objects of this type manually nor subclass it.
 	 * Pass your `SQLiteFileImpl` subclass as template argument instead.
 	 */
-	template<class TFileImpl>
+	template<typename TFileImpl>
 	struct SQLiteFile : public sqlite3_file {
+		using FileImpl = TFileImpl;
+
 		sqlite3_io_methods methods;
-		TFileImpl implementation;
+		FileImpl implementation;
 		sqlite3_file original_file[0];
 
 		void setup(int open_result) {
@@ -265,7 +267,10 @@ namespace sqlite3vfs {
 	 */
 	template<typename TVfsImpl>
 	struct SQLiteVfs : public sqlite3_vfs {
-		TVfsImpl implementation;
+		using VfsImpl = TVfsImpl;
+		using FileImpl = typename VfsImpl::FileImpl;
+
+		VfsImpl implementation;
 
 		SQLiteVfs(const char *name)
 			: SQLiteVfs(name, (sqlite3_vfs *) nullptr)
@@ -286,7 +291,7 @@ namespace sqlite3vfs {
 			implementation.original_vfs = original_vfs;
 
 			iVersion = original_vfs->iVersion;
-			szOsFile = (int) sizeof(SQLiteFile<typename TVfsImpl::FileImpl>) + original_vfs->szOsFile;
+			szOsFile = (int) sizeof(SQLiteFile<FileImpl>) + original_vfs->szOsFile;
 			mxPathname = original_vfs->mxPathname;
 			zName = name;
 		}
@@ -324,7 +329,7 @@ namespace sqlite3vfs {
 		}
 		
 		static int wrap_xOpen(sqlite3_vfs *vfs, sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-			return static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, (SQLiteFile<typename TVfsImpl::FileImpl> *) file, flags, pOutFlags);
+			return static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, (SQLiteFile<FileImpl> *) file, flags, pOutFlags);
 		}
 		static int wrap_xDelete(sqlite3_vfs *vfs, const char *zName, int syncDir) {
 			return static_cast<SQLiteVfs *>(vfs)->implementation.xDelete(zName, syncDir);
