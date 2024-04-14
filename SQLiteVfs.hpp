@@ -11,7 +11,7 @@ namespace sqlite3vfs {
 	*
 	* @see https://sqlite.org/c3ref/file.html
 	*/
-	struct SQLiteFileShim {
+	struct SQLiteFileImpl {
 		sqlite3_file *original_file;
 
 		virtual int xClose() {
@@ -77,10 +77,10 @@ namespace sqlite3vfs {
 	/**
 	 * SQLite File 
 	 */
-	template<class TFileShim>
+	template<class TFileImpl>
 	struct SQLiteFile : public sqlite3_file {
 		sqlite3_io_methods methods;
-		TFileShim implementation;
+		TFileImpl implementation;
 		sqlite3_file original_file[0];
 
 		void setup(int open_result) {
@@ -181,14 +181,14 @@ namespace sqlite3vfs {
 	*
 	* @see https://sqlite.org/c3ref/vfs.html
 	*/
-	template<typename TFileShim>
-	struct SQLiteVfsShim {
-		using File = TFileShim;
+	template<typename TFileImpl>
+	struct SQLiteVfsImpl {
+		using FileImpl = TFileImpl;
 		
 		sqlite3_vfs *original_vfs;
 		
 		int open(sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-			SQLiteFile<TFileShim> *file_shim = (SQLiteFile<TFileShim> *) file;
+			SQLiteFile<TFileImpl> *file_shim = (SQLiteFile<TFileImpl> *) file;
 			int result = original_vfs->xOpen(original_vfs, zName, file_shim->original_file, flags, pOutFlags);
 			file_shim->setup(result);
 			return result;
@@ -257,9 +257,9 @@ namespace sqlite3vfs {
 		*/
 	};
 
-	template<typename TVfsShim>
+	template<typename TVfsImpl>
 	struct SQLiteVfs : public sqlite3_vfs {
-		TVfsShim implementation;
+		TVfsImpl implementation;
 
 		SQLiteVfs()
 			: implementation()
@@ -295,7 +295,7 @@ namespace sqlite3vfs {
 			implementation.original_vfs = original_vfs;
 
 			iVersion = original_vfs->iVersion;
-			szOsFile = (int) sizeof(SQLiteFile<typename TVfsShim::File>) + original_vfs->szOsFile;
+			szOsFile = (int) sizeof(SQLiteFile<typename TVfsImpl::FileImpl>) + original_vfs->szOsFile;
 			mxPathname = original_vfs->mxPathname;
 			zName = name;
 		}
