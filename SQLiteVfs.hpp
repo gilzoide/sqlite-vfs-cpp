@@ -92,7 +92,7 @@ namespace sqlite3vfs {
 
 		void setup(int open_result) {
 			if (open_result == SQLITE_OK) {
-				implementation = {};
+				new (&implementation) FileImpl();
 				implementation.original_file = original_file;
 				methods = {
 					original_file->pMethods->iVersion,
