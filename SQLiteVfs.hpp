@@ -300,6 +300,10 @@ namespace sqlite3vfs {
 			zName = name;
 		}
 
+		~SQLiteVfs() {
+			unregister_vfs();
+		}
+
 		int register_vfs(bool makeDefault) {
 			return sqlite3_vfs_register(this, makeDefault);
 		}
