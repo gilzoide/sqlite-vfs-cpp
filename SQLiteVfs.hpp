@@ -3,7 +3,7 @@
 
 #include <sqlite3.h>
 
-namespace sqlite3vfs {
+namespace sqlitevfs {
 	/**
 	 * SQLite File implementation with virtual methods for C++.
 	 *
