@@ -16,6 +16,10 @@ namespace sqlite3vfs {
 	struct SQLiteFileImpl {
 		sqlite3_file *original_file;
 
+		virtual int iVersion() const {
+			return original_file ? original_file->pMethods->iVersion : 1;
+		}
+
 		virtual int xClose() {
 			return original_file->pMethods->xClose(original_file);
 		}
@@ -95,7 +99,7 @@ namespace sqlite3vfs {
 				new (&implementation) FileImpl();
 				implementation.original_file = original_file;
 				methods = {
-					original_file->pMethods->iVersion,
+					implementation.iVersion(),
 					&wrap_xClose,
 					&wrap_xRead,
 					&wrap_xWrite,
