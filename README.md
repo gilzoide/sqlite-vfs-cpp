@@ -92,3 +92,19 @@ extern "C" int sqlite3_logiovfs_init(sqlite3 *db, char **pzErrMsg, const sqlite3
 
 // 6. (optional) Unregister your VFS using `my_vfs.unregister_vfs()`
 ```
+
+
+## Samples
+- [logiovfs](samples/logiovfs.cpp): shows how to create a SQLite extension DLL that registers a simple VFS shim + File shim that logs read/write operations
+
+Building and running samples:
+```sh
+# build
+mkdir build
+cd build
+cmake ..
+make
+
+# run from build folder
+samples/logiovfs-sample
+```

@@ -1,0 +1,14 @@
+# C++ build stuff
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.DSYM
+build/
+
+# SQLite databases
+*.db
+*.sqlite*
