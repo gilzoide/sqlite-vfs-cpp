@@ -12,3 +12,6 @@ build/
 # SQLite databases
 *.db
 *.sqlite*
+
+# Doxygen generated files
+docs/

@@ -1,5 +1,5 @@
-# SQLite VFS/File shim classes for C++
-Single header with classes for easily implementing [SQLite](https://sqlite.org/) [VFS](https://www.sqlite.org/vfs.html) shims in C++.
+# SQLiteVfs.hpp
+Single header with classes for easily implementing [SQLite](https://sqlite.org/) [VFS](https://www.sqlite.org/vfs.html) shims in C++11.
 
 
 ## Features
