@@ -38,6 +38,8 @@
 #ifndef __SQLITE_VFS_HPP__
 #define __SQLITE_VFS_HPP__
 
+#include <new>
+
 #include <sqlite3.h>
 
 namespace sqlitevfs {
