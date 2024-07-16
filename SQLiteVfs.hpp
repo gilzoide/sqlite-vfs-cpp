@@ -474,6 +474,15 @@ namespace sqlitevfs {
 			return sqlite3_vfs_unregister(this);
 		}
 
+		/**
+		 * Whether this VFS is registered in SQLite, checked using `sqlite3_vfs_find`.
+		 *
+		 * @see https://sqlite.org/c3ref/vfs_find.html
+		 */
+		bool is_registered() const {
+			return sqlite3_vfs_find(zName) == this;
+		}
+
 	private:
 		SQLiteVfs()
 			: implementation()
