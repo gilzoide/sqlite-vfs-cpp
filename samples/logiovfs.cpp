@@ -13,8 +13,8 @@ using namespace std;
 // 2. Implement your own `SQLiteFileImpl` subclass.
 // Override any IO methods necessary. Reference: https://www.sqlite.org/c3ref/io_methods.html
 // Default implementation will forward execution to the `original_file` opened by `SQLiteVfsImpl::xOpen`.
-// Default constructor will be called if `SQLiteFile` is opened successfully.
-// Destructor will be called right after `xClose`.
+// Default constructor will be called before `SQLiteVfsImpl::xOpen`.
+// Destructor will be called right after `xClose`, or after a failed `SQLiteVfsImpl::xOpen`.
 struct LogIOFileShim : public SQLiteFileImpl {
 	LogIOFileShim() {
 		cout << "> Constructing file!" << endl;
@@ -41,6 +41,7 @@ struct LogIOFileShim : public SQLiteFileImpl {
 // Override any methods necessary. Reference: https://www.sqlite.org/c3ref/vfs.html
 // Default implementation will forward execution to the `original_vfs` passed in `SQLiteVfs` construtor.
 // Notice that `xOpen` receives a `SQLiteFile<LogIOFileImpl> *` instead of `sqlite3_file`.
+// `file` is guaranteed to be fully constructed before this method is called.
 struct LogIOVfsShim : public SQLiteVfsImpl<LogIOFileShim> {
 	int xOpen(sqlite3_filename zName, SQLiteFile<LogIOFileShim> *file, int flags, int *pOutFlags) override {
 		int result = SQLiteVfsImpl::xOpen(zName, file, flags, pOutFlags);

@@ -38,6 +38,8 @@
 #ifndef __SQLITE_VFS_HPP__
 #define __SQLITE_VFS_HPP__
 
+#include <new>
+
 #include <sqlite3.h>
 
 namespace sqlitevfs {
@@ -172,7 +174,8 @@ namespace sqlitevfs {
 		/**
 		 * Setup internal state based on the `open_result` flag.
 		 *
-		 * If `open_result` is `SQLITE_OK`, `pMethods` will be populated and `implementation` constructed.
+		 * This function is called automatically by `SQLiteVfs::wrap_xOpen`.
+		 * If `open_result` is `SQLITE_OK`, `pMethods` will be populated.
 		 * Otherwise, `pMethods` will be set to NULL and SQLite won't call them.
 		 *
 		 * @param open_result  A SQLite error code. Pass `SQLITE_OK` to fully setup the file object.
@@ -180,7 +183,6 @@ namespace sqlitevfs {
 		 */
 		void setup(int open_result) {
 			if (open_result == SQLITE_OK) {
-				new (&implementation) FileImpl();
 				implementation.original_file = original_file;
 				methods = {
 					implementation.iVersion(),
@@ -290,16 +292,16 @@ namespace sqlitevfs {
 		sqlite3_vfs *original_vfs;
 		
 		/**
-		 * Open the database and populates `file` using `SQLiteFile::setup`.
-		 * 
-		 * If you override it without calling the default implementation, you should call `file->setup(open_result)` manually.
-		 * @see SQLiteFile::setup
+		 * Open the database.
+		 *
+		 * `file` is guaranteed to have been constructed using the default constructor.
+		 * If you return `SQLITE_OK`, the `file` IO methods will be populated.
+		 * Otherwise, IO methods will be set to NULL and `file` will be automatically destroyed.
+		 *
 		 * @see https://sqlite.org/c3ref/vfs.html
 		 */
 		virtual int xOpen(sqlite3_filename zName, SQLiteFile<TFileImpl> *file, int flags, int *pOutFlags) {
-			int result = original_vfs->xOpen(original_vfs, zName, file->original_file, flags, pOutFlags);
-			file->setup(result);
-			return result;
+			return original_vfs->xOpen(original_vfs, zName, file->original_file, flags, pOutFlags);
 		}
 		/// @see https://sqlite.org/c3ref/vfs.html
 		virtual int xDelete(const char *zName, int syncDir) {
@@ -472,6 +474,15 @@ namespace sqlitevfs {
 			return sqlite3_vfs_unregister(this);
 		}
 
+		/**
+		 * Whether this VFS is registered in SQLite, checked using `sqlite3_vfs_find`.
+		 *
+		 * @see https://sqlite.org/c3ref/vfs_find.html
+		 */
+		bool is_registered() const {
+			return sqlite3_vfs_find(zName) == this;
+		}
+
 	private:
 		SQLiteVfs()
 			: implementation()
@@ -496,8 +507,15 @@ namespace sqlitevfs {
 			xNextSystemCall = &wrap_xNextSystemCall;
 		}
 		
-		static int wrap_xOpen(sqlite3_vfs *vfs, sqlite3_filename zName, sqlite3_file *file, int flags, int *pOutFlags) {
-			return static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, (SQLiteFile<FileImpl> *) file, flags, pOutFlags);
+		static int wrap_xOpen(sqlite3_vfs *vfs, sqlite3_filename zName, sqlite3_file *raw_file, int flags, int *pOutFlags) {
+			auto file = static_cast<SQLiteFile<FileImpl> *>(raw_file);
+			new (file) SQLiteFile<FileImpl>();
+			int result = static_cast<SQLiteVfs *>(vfs)->implementation.xOpen(zName, file, flags, pOutFlags);
+			file->setup(result);
+			if (result != SQLITE_OK) {
+				file->~SQLiteFile<FileImpl>();
+			}
+			return result;
 		}
 		static int wrap_xDelete(sqlite3_vfs *vfs, const char *zName, int syncDir) {
 			return static_cast<SQLiteVfs *>(vfs)->implementation.xDelete(zName, syncDir);
