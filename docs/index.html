@@ -106,8 +106,8 @@ Usage example</h1>
 <div class="line"><span class="comment">// 2. Implement your own `SQLiteFileImpl` subclass.</span></div>
 <div class="line"><span class="comment">// Override any IO methods necessary. Reference: https://www.sqlite.org/c3ref/io_methods.html</span></div>
 <div class="line"><span class="comment">// Default implementation will forward execution to the `original_file` opened by `SQLiteVfsImpl::xOpen`.</span></div>
-<div class="line"><span class="comment">// Default constructor will be called only if file is opened successfully.</span></div>
-<div class="line"><span class="comment">// Destructor will be called right after `xClose`.</span></div>
+<div class="line"><span class="comment">// Default constructor will be called before `SQLiteVfsImpl::xOpen`.</span></div>
+<div class="line"><span class="comment">// Destructor will be called right after `xClose`, or after a failed `SQLiteVfsImpl::xOpen`.</span></div>
 <div class="line"><span class="keyword">struct </span>LogIOFileShim : <span class="keyword">public</span> <a class="code hl_struct" href="structsqlitevfs_1_1_s_q_lite_file_impl.html">SQLiteFileImpl</a> {</div>
 <div class="line">    LogIOFileShim() {</div>
 <div class="line">        cout &lt;&lt; <span class="stringliteral">&quot;&gt; Constructing file!&quot;</span> &lt;&lt; endl;</div>
@@ -134,6 +134,7 @@ Usage example</h1>
 <div class="line"><span class="comment">// Override any methods necessary. Reference: https://www.sqlite.org/c3ref/vfs.html</span></div>
 <div class="line"><span class="comment">// Default implementation will forward execution to the `original_vfs` passed in `SQLiteVfs` construtor.</span></div>
 <div class="line"><span class="comment">// Notice that `xOpen` receives a `SQLiteFile&lt;LogIOFileImpl&gt; *` instead of `sqlite3_file`.</span></div>
+<div class="line"><span class="comment">// `file` is guaranteed to be fully constructed before this method is called.</span></div>
 <div class="line"><span class="keyword">struct </span>LogIOVfsShim : <span class="keyword">public</span> <a class="code hl_struct" href="structsqlitevfs_1_1_s_q_lite_vfs_impl.html">SQLiteVfsImpl</a>&lt;LogIOFileShim&gt; {</div>
 <div class="line">    <span class="keywordtype">int</span> xOpen(sqlite3_filename zName, <a class="code hl_struct" href="structsqlitevfs_1_1_s_q_lite_file.html">SQLiteFile&lt;LogIOFileShim&gt;</a> *file, <span class="keywordtype">int</span> flags, <span class="keywordtype">int</span> *pOutFlags)<span class="keyword"> override </span>{</div>
 <div class="line">        <span class="keywordtype">int</span> result = SQLiteVfsImpl::xOpen(zName, file, flags, pOutFlags);</div>
@@ -166,11 +167,11 @@ Usage example</h1>
 <div class="line"> </div>
 <div class="line"><span class="comment">// 6. (optional) Unregister your VFS using `my_vfs.unregister_vfs()`</span></div>
 <div class="ttc" id="a_s_q_lite_vfs_8hpp_html"><div class="ttname"><a href="_s_q_lite_vfs_8hpp.html">SQLiteVfs.hpp</a></div></div>
-<div class="ttc" id="anamespacesqlitevfs_html"><div class="ttname"><a href="namespacesqlitevfs.html">sqlitevfs</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:43</div></div>
-<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_file_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_file.html">sqlitevfs::SQLiteFile</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:159</div></div>
-<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_file_impl_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_file_impl.html">sqlitevfs::SQLiteFileImpl</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:56</div></div>
-<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_vfs_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_vfs.html">sqlitevfs::SQLiteVfs</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:388</div></div>
-<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_vfs_impl_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_vfs_impl.html">sqlitevfs::SQLiteVfsImpl</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:284</div></div>
+<div class="ttc" id="anamespacesqlitevfs_html"><div class="ttname"><a href="namespacesqlitevfs.html">sqlitevfs</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:45</div></div>
+<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_file_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_file.html">sqlitevfs::SQLiteFile</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:161</div></div>
+<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_file_impl_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_file_impl.html">sqlitevfs::SQLiteFileImpl</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:58</div></div>
+<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_vfs_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_vfs.html">sqlitevfs::SQLiteVfs</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:390</div></div>
+<div class="ttc" id="astructsqlitevfs_1_1_s_q_lite_vfs_impl_html"><div class="ttname"><a href="structsqlitevfs_1_1_s_q_lite_vfs_impl.html">sqlitevfs::SQLiteVfsImpl</a></div><div class="ttdef"><b>Definition:</b> SQLiteVfs.hpp:286</div></div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md3"></a>
 Samples</h1>
 <ul>

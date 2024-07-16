@@ -588,10 +588,9 @@ template&lt;typename TFileImpl &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Open the database and populates <code>file</code> using <code><a class="el" href="structsqlitevfs_1_1_s_q_lite_file.html#ac71b235328f0e8f594713fa961362e9e">SQLiteFile::setup</a></code>.</p>
-<p>If you override it without calling the default implementation, you should call <code>file-&gt;setup(open_result)</code> manually. </p><dl class="section see"><dt>See also</dt><dd><a class="el" href="structsqlitevfs_1_1_s_q_lite_file.html#ac71b235328f0e8f594713fa961362e9e">SQLiteFile::setup</a> </dd>
-<dd>
-<a href="https://sqlite.org/c3ref/vfs.html">https://sqlite.org/c3ref/vfs.html</a> </dd></dl>
+<p>Open the database.</p>
+<p><code>file</code> is guaranteed to have been constructed using the default constructor. If you return <code>SQLITE_OK</code>, the <code>file</code> IO methods will be populated. Otherwise, IO methods will be set to NULL and <code>file</code> will be automatically destroyed.</p>
+<dl class="section see"><dt>See also</dt><dd><a href="https://sqlite.org/c3ref/vfs.html">https://sqlite.org/c3ref/vfs.html</a> </dd></dl>
 
 </div>
 </div>

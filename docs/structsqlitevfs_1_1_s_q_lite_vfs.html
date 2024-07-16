@@ -112,6 +112,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aacfe291eb604618f67e6f7f28ef28837"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8d41b98368dd3e04f4a4ca42f7507569"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsqlitevfs_1_1_s_q_lite_vfs.html#a8d41b98368dd3e04f4a4ca42f7507569">unregister_vfs</a> ()</td></tr>
 <tr class="separator:a8d41b98368dd3e04f4a4ca42f7507569"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afae1fd2a64e83bc523dfc9abe06ce87c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsqlitevfs_1_1_s_q_lite_vfs.html#afae1fd2a64e83bc523dfc9abe06ce87c">is_registered</a> () const</td></tr>
+<tr class="separator:afae1fd2a64e83bc523dfc9abe06ce87c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -323,6 +325,35 @@ template&lt;typename TVfsImpl &gt; </div>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="afae1fd2a64e83bc523dfc9abe06ce87c" name="afae1fd2a64e83bc523dfc9abe06ce87c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afae1fd2a64e83bc523dfc9abe06ce87c">&#9670;&#160;</a></span>is_registered()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename TVfsImpl &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool <a class="el" href="structsqlitevfs_1_1_s_q_lite_vfs.html">sqlitevfs::SQLiteVfs</a>&lt; TVfsImpl &gt;::is_registered </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Whether this VFS is registered in SQLite, checked using <code>sqlite3_vfs_find</code>.</p>
+<dl class="section see"><dt>See also</dt><dd><a href="https://sqlite.org/c3ref/vfs_find.html">https://sqlite.org/c3ref/vfs_find.html</a> </dd></dl>
+
+</div>
+</div>
 <a id="aacfe291eb604618f67e6f7f28ef28837" name="aacfe291eb604618f67e6f7f28ef28837"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aacfe291eb604618f67e6f7f28ef28837">&#9670;&#160;</a></span>register_vfs()</h2>
 

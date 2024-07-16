@@ -164,7 +164,7 @@ template&lt;typename TFileImpl &gt; </div>
 </table>
 </div><div class="memdoc">
 <p>Setup internal state based on the <code>open_result</code> flag.</p>
-<p>If <code>open_result</code> is <code>SQLITE_OK</code>, <code>pMethods</code> will be populated and <code>implementation</code> constructed. Otherwise, <code>pMethods</code> will be set to NULL and SQLite won't call them.</p>
+<p>This function is called automatically by <code>SQLiteVfs::wrap_xOpen</code>. If <code>open_result</code> is <code>SQLITE_OK</code>, <code>pMethods</code> will be populated. Otherwise, <code>pMethods</code> will be set to NULL and SQLite won't call them.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">open_result</td><td>A SQLite error code. Pass <code>SQLITE_OK</code> to fully setup the file object. Pass anything else to set <code>pMethods</code> to NULL. </td></tr>
