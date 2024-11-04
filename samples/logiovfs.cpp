@@ -16,19 +16,21 @@ using namespace std;
 // Default constructor will be called before `SQLiteVfsImpl::xOpen`.
 // Destructor will be called right after `xClose`, or after a failed `SQLiteVfsImpl::xOpen`.
 struct LogIOFileShim : public SQLiteFileImpl {
+	sqlite3_filename zName;
+
 	LogIOFileShim() {
 		cout << "> Constructing file!" << endl;
 	}
 	int xRead(void *p, int iAmt, sqlite3_int64 iOfst) override {
-		cout << "> READ " << iAmt << " bytes starting at " << iOfst << endl;
+		cout << "> READ " << zName << " " << iAmt << " bytes starting at " << iOfst << endl;
 		return SQLiteFileImpl::xRead(p, iAmt, iOfst);
 	}
 	int xWrite(const void *p, int iAmt, sqlite3_int64 iOfst) override {
-		cout << "> WRITE " << iAmt << " bytes starting at " << iOfst << endl;
+		cout << "> WRITE " << zName << " " << iAmt << " bytes starting at " << iOfst << endl;
 		return SQLiteFileImpl::xWrite(p, iAmt, iOfst);
 	}
 	int xClose() override {
-		cout << "> CLOSE" << endl;
+		cout << "> CLOSE " << zName << endl;
 		return SQLiteFileImpl::xClose();
 	}
 	~LogIOFileShim() {
@@ -45,6 +47,7 @@ struct LogIOFileShim : public SQLiteFileImpl {
 struct LogIOVfsShim : public SQLiteVfsImpl<LogIOFileShim> {
 	int xOpen(sqlite3_filename zName, SQLiteFile<LogIOFileShim> *file, int flags, int *pOutFlags) override {
 		int result = SQLiteVfsImpl::xOpen(zName, file, flags, pOutFlags);
+		file->implementation.zName = zName;
 		if (result == SQLITE_OK) {
 			cout << "> OPENED '" << zName << "'" << endl;
 		}
@@ -52,6 +55,11 @@ struct LogIOVfsShim : public SQLiteVfsImpl<LogIOFileShim> {
 			cout << "> ERROR OPENING '" << zName << "': " << sqlite3_errstr(result) << endl;
 		}
 		return result;
+	}
+
+	int xDelete(const char *zName, int syncDir) override {
+		cout << "> DELETE " << zName << endl;
+		return SQLiteVfsImpl::xDelete(zName, syncDir);
 	}
 };
 
